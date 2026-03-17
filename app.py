@@ -51,7 +51,7 @@ sessions = {}
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-MODEL = "claude-sonnet-4-20250514"
+MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 500
 RETRY_ATTEMPTS = 3
 RETRY_DELAY = 2
@@ -130,15 +130,14 @@ def identify_zero_data_artists(rows: list[dict]) -> dict:
 def fetch_artist_context(client, artist: str, city: str) -> str:
     """Call Claude API with web_search to gather context on an artist."""
     search_prompt = (
-        f'Search the web for information about the musical artist or performer "{artist}" '
-        f"who has an upcoming show in {city}.\n\n"
+        f'Search the web for information about the musical artist or performer "{artist}".\n'
         "Find and summarize the following in 3-5 concise sentences:\n"
-        "- What kind of act they are (band, solo, comedian, DJ, etc.) and their genre\n"
-        "- Where they are based and how long they have been active\n"
-        "- Notable achievements: festival appearances, support slots, press coverage, awards\n"
-        "- Touring activity: are they actively touring? Regional or national?\n"
-        "- Any indicators of fanbase size or live show draw\n\n"
-        "If you find nothing meaningful, respond with exactly: NO_CONTEXT_FOUND\n\n"
+        "* What kind of act they are (band, solo, comedian, DJ, etc.) and their genre\n"
+        "* Where they are based and how long they have been active\n"
+        "* Notable achievements: festival appearances, support slots, press coverage, awards\n"
+        "* Touring activity: are they actively touring? Regional or national?\n"
+        "* Any indicators of fanbase size or recent sell outs\n"
+        "If you find nothing meaningful, respond with exactly: NO_CONTEXT_FOUND\n"
         "Do not speculate or fabricate. Only report what you find from search results."
     )
 
