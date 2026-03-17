@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Artist Web Research Tool</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --border: #e0e0e0;
+    --primary: #2563eb;
+    --primary-hover: #1d4ed8;
+    --text: #1a1a1a;
+    --text-muted: #666;
+    --success: #16a34a;
+    --warning: #d97706;
+    --danger: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    line-height: 1.5; padding: 2rem;
+    max-width: 1000px; margin: 0 auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  .subtitle { color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.9rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1rem; }
+  label { display: block; font-weight: 500; margin-bottom: 0.3rem; font-size: 0.9rem; }
+  input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.9rem; margin-bottom: 0.75rem;
+  }
+  input[type="file"] { margin-bottom: 0.75rem; }
+  .row { display: flex; gap: 1rem; align-items: flex-end; }
+  .row > * { flex: 1; }
+  .row > .small { flex: 0.3; }
+  button {
+    background: var(--primary); color: #fff; border: none;
+    padding: 0.6rem 1.5rem; border-radius: 6px; font-size: 0.9rem;
+    cursor: pointer; font-weight: 500;
+  }
+  button:hover { background: var(--primary-hover); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-success { background: var(--success); }
+  .btn-success:hover { background: #15803d; }
+  .hidden { display: none; }
+
+  /* Summary */
+  .stats { display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .stat {
+    background: var(--bg); padding: 0.75rem 1rem; border-radius: 8px;
+    min-width: 140px;
+  }
+  .stat .num { font-size: 1.4rem; font-weight: 700; }
+  .stat .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; }
+
+  /* Artist list */
+  .artist-list {
+    max-height: 200px; overflow-y: auto; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.85rem;
+  }
+  .artist-list table { width: 100%; border-collapse: collapse; }
+  .artist-list th, .artist-list td {
+    padding: 0.35rem 0.75rem; text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .artist-list th {
+    background: var(--bg); position: sticky; top: 0;
+    font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);
+  }
+
+  /* Progress */
+  .progress-bar-container {
+    background: var(--bg); border-radius: 6px; height: 24px;
+    overflow: hidden; margin-bottom: 0.75rem;
+  }
+  .progress-bar {
+    height: 100%; background: var(--primary); border-radius: 6px;
+    transition: width 0.3s ease; display: flex; align-items: center;
+    justify-content: center; color: #fff; font-size: 0.75rem; font-weight: 600;
+    min-width: fit-content; padding: 0 0.5rem;
+  }
+  .log {
+    max-height: 250px; overflow-y: auto; font-family: "Cascadia Code", "Fira Code", monospace;
+    font-size: 0.8rem; background: #1a1a2e; color: #e0e0e0;
+    padding: 0.75rem; border-radius: 6px; line-height: 1.6;
+  }
+  .log .found { color: #4ade80; }
+  .log .no-ctx { color: #facc15; }
+  .log .error { color: #f87171; }
+
+  /* Results */
+  .results-table-wrap {
+    max-height: 400px; overflow: auto; border: 1px solid var(--border);
+    border-radius: 6px; font-size: 0.85rem;
+  }
+  .results-table-wrap table { width: 100%; border-collapse: collapse; min-width: 600px; }
+  .results-table-wrap th, .results-table-wrap td {
+    padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .results-table-wrap th {
+    background: var(--bg); position: sticky; top: 0;
+    font-weight: 600; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted);
+  }
+  .results-table-wrap td.context { max-width: 500px; }
+  .badge {
+    display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px;
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .badge-found { background: #dcfce7; color: #166534; }
+  .badge-none { background: #fef3c7; color: #92400e; }
+
+  .actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
+</style>
+</head>
+<body>
+
+<h1>Artist Web Research Tool</h1>
+<p class="subtitle">Upload event data, identify zero-data artists, and research them with Claude + web search</p>
+
+<!-- Step 1: Upload -->
+<div class="card" id="uploadCard">
+  <h2>1. Upload &amp; Configure</h2>
+  <label for="apiKey">Anthropic API Key</label>
+  <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+  <div class="row">
+    <div>
+      <label for="fileInput">Event File (.csv, .xls, .xlsx)</label>
+      <input type="file" id="fileInput" accept=".csv,.xls,.xlsx">
+    </div>
+    <div class="small">
+      <label for="concurrency">Concurrency</label>
+      <input type="number" id="concurrency" value="5" min="1" max="20">
+    </div>
+  </div>
+  <button id="uploadBtn" onclick="uploadFile()">Upload &amp; Analyze</button>
+  <p id="uploadError" style="color:var(--danger);margin-top:0.5rem;font-size:0.85rem;" class="hidden"></p>
+</div>
+
+<!-- Step 2: Summary -->
+<div class="card hidden" id="summaryCard">
+  <h2>2. Zero-Data Artists Found</h2>
+  <div class="stats">
+    <div class="stat"><div class="num" id="statRows">0</div><div class="label">Total Rows</div></div>
+    <div class="stat"><div class="num" id="statArtists">0</div><div class="label">Zero-Data Artists</div></div>
+    <div class="stat"><div class="num" id="statAffected">0</div><div class="label">Affected Rows</div></div>
+  </div>
+  <div class="artist-list" id="artistList"></div>
+  <div class="actions">
+    <button id="startBtn" onclick="startProcessing()">Start Web Research</button>
+    <button onclick="resetAll()" style="background:var(--text-muted);">Reset</button>
+  </div>
+</div>
+
+<!-- Step 3: Progress -->
+<div class="card hidden" id="progressCard">
+  <h2>3. Researching Artists...</h2>
+  <div class="progress-bar-container">
+    <div class="progress-bar" id="progressBar" style="width:0%">0%</div>
+  </div>
+  <p id="progressStatus" style="font-size:0.85rem;color:var(--text-muted);margin-bottom:0.5rem;"></p>
+  <div class="log" id="logArea"></div>
+</div>
+
+<!-- Step 4: Results -->
+<div class="card hidden" id="resultsCard">
+  <h2>4. Results</h2>
+  <div class="stats" id="resultStats"></div>
+  <div class="results-table-wrap" id="resultsTable"></div>
+  <div class="actions">
+    <button class="btn-success" onclick="downloadCSV()">Download Enriched CSV</button>
+    <button onclick="resetAll()" style="background:var(--text-muted);">Start Over</button>
+  </div>
+</div>
+
+<script>
+let sessionId = null;
+let artistResults = [];
+
+function showError(msg) {
+  const el = document.getElementById("uploadError");
+  el.textContent = msg;
+  el.classList.remove("hidden");
+}
+
+function hideError() {
+  document.getElementById("uploadError").classList.add("hidden");
+}
+
+async function uploadFile() {
+  hideError();
+  const apiKey = document.getElementById("apiKey").value.trim();
+  const fileInput = document.getElementById("fileInput");
+  const concurrency = document.getElementById("concurrency").value;
+
+  if (!apiKey) { showError("Enter your Anthropic API key."); return; }
+  if (!fileInput.files.length) { showError("Select a file to upload."); return; }
+
+  const btn = document.getElementById("uploadBtn");
+  btn.disabled = true;
+  btn.textContent = "Uploading...";
+
+  const form = new FormData();
+  form.append("file", fileInput.files[0]);
+  form.append("api_key", apiKey);
+  form.append("max_concurrent", concurrency);
+
+  try {
+    const resp = await fetch("/upload", { method: "POST", body: form });
+    const data = await resp.json();
+    if (!resp.ok) { showError(data.error || "Upload failed"); return; }
+
+    sessionId = data.session_id;
+    document.getElementById("statRows").textContent = data.total_rows;
+    document.getElementById("statArtists").textContent = data.zero_data_count;
+    document.getElementById("statAffected").textContent = data.zero_data_row_count;
+
+    // Build artist preview table
+    let html = "<table><thead><tr><th>Artist</th><th>City</th><th>Rows</th></tr></thead><tbody>";
+    for (const a of data.artists) {
+      html += `<tr><td>${esc(a.artist)}</td><td>${esc(a.city)}</td><td>${a.row_count}</td></tr>`;
+    }
+    html += "</tbody></table>";
+    document.getElementById("artistList").innerHTML = html;
+
+    document.getElementById("summaryCard").classList.remove("hidden");
+    if (data.zero_data_count === 0) {
+      document.getElementById("startBtn").disabled = true;
+      document.getElementById("startBtn").textContent = "No zero-data artists found";
+    }
+  } catch (e) {
+    showError("Network error: " + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Upload & Analyze";
+  }
+}
+
+function startProcessing() {
+  if (!sessionId) return;
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("progressCard").classList.remove("hidden");
+  artistResults = [];
+
+  const logArea = document.getElementById("logArea");
+  logArea.innerHTML = "";
+
+  const evtSource = new EventSource(`/process?session_id=${sessionId}`);
+
+  evtSource.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.error) {
+      appendLog(`ERROR: ${data.error}`, "error");
+      evtSource.close();
+      return;
+    }
+
+    if (data.type === "progress") {
+      const pct = Math.round((data.completed / data.total) * 100);
+      const bar = document.getElementById("progressBar");
+      bar.style.width = pct + "%";
+      bar.textContent = pct + "%";
+      document.getElementById("progressStatus").textContent =
+        `${data.completed} / ${data.total} artists processed`;
+
+      const cls = data.status === "found" ? "found" : "no-ctx";
+      const label = data.status === "found" ? "FOUND" : "NO DATA";
+      appendLog(`[${data.completed}/${data.total}] ${data.artist} — ${label}`, cls);
+
+      artistResults.push({
+        artist: data.artist,
+        status: data.status,
+        context: data.context
+      });
+    }
+
+    if (data.type === "done") {
+      evtSource.close();
+      appendLog(`\nDone! Found context for ${data.found}/${data.total} artists in ${data.elapsed}s`, "found");
+      showResults(data);
+    }
+  };
+
+  evtSource.onerror = function() {
+    appendLog("Connection lost.", "error");
+    evtSource.close();
+  };
+}
+
+function appendLog(msg, cls) {
+  const logArea = document.getElementById("logArea");
+  const span = document.createElement("div");
+  span.className = cls || "";
+  span.textContent = msg;
+  logArea.appendChild(span);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function showResults(summary) {
+  const card = document.getElementById("resultsCard");
+  card.classList.remove("hidden");
+
+  document.getElementById("resultStats").innerHTML = `
+    <div class="stat"><div class="num">${summary.total}</div><div class="label">Artists Searched</div></div>
+    <div class="stat"><div class="num">${summary.found}</div><div class="label">Context Found</div></div>
+    <div class="stat"><div class="num">${summary.total - summary.found}</div><div class="label">No Context</div></div>
+    <div class="stat"><div class="num">${summary.elapsed}s</div><div class="label">Time Elapsed</div></div>
+  `;
+
+  let html = "<table><thead><tr><th>Artist</th><th>Status</th><th>Context (preview)</th></tr></thead><tbody>";
+  for (const r of artistResults) {
+    const badge = r.status === "found"
+      ? '<span class="badge badge-found">Found</span>'
+      : '<span class="badge badge-none">None</span>';
+    html += `<tr><td>${esc(r.artist)}</td><td>${badge}</td><td class="context">${esc(r.context || "—")}</td></tr>`;
+  }
+  html += "</tbody></table>";
+  document.getElementById("resultsTable").innerHTML = html;
+}
+
+function downloadCSV() {
+  if (sessionId) {
+    window.location.href = `/download/${sessionId}`;
+  }
+}
+
+function resetAll() {
+  sessionId = null;
+  artistResults = [];
+  document.getElementById("summaryCard").classList.add("hidden");
+  document.getElementById("progressCard").classList.add("hidden");
+  document.getElementById("resultsCard").classList.add("hidden");
+  document.getElementById("fileInput").value = "";
+  document.getElementById("startBtn").disabled = false;
+  document.getElementById("startBtn").textContent = "Start Web Research";
+  document.getElementById("logArea").innerHTML = "";
+  document.getElementById("progressBar").style.width = "0%";
+  document.getElementById("progressBar").textContent = "0%";
+}
+
+function esc(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Restore API key from sessionStorage
+document.addEventListener("DOMContentLoaded", () => {
+  const saved = sessionStorage.getItem("anthropic_key");
+  if (saved) document.getElementById("apiKey").value = saved;
+  document.getElementById("apiKey").addEventListener("change", (e) => {
+    sessionStorage.setItem("anthropic_key", e.target.value);
+  });
+});
+</script>
+</body>
+</html>
